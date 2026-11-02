@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!--
+      菜单栏应用：不出现在 Dock、不占用 Cmd+Tab。
+      Tauri 的 bundler 不会写 LSUIElement（见 tauri#15005：托盘应用在打包后的
+      .app 里可能重新出现 Dock 图标），所以这里显式提供。
+      与运行时 set_activation_policy(Accessory) 互为保险。
+    -->
+    <key>LSUIElement</key>
+    <true/>
+  </dict>
+</plist>

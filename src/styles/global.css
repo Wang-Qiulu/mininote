@@ -104,10 +104,21 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
   transition:
     opacity var(--dur-fast) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);
   transform-origin: 50% 0%;
+}
+
+/* 顶缘的方向性高光：系统材质之上再补一层光，让窗口有"被光打到"的体积感 */
+.app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  background: var(--specular);
 }
 
 /* 形变过程中内容淡出，避免尺寸变化导致的重排跳变 */
@@ -588,6 +599,7 @@ textarea {
     --surface-2: #f1efec;
     --surface-hi: #ffffff;
     --edge-grad: linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0) 40%);
+    --specular: none;
   }
 }
 
@@ -596,9 +608,10 @@ textarea {
     :root {
       --scrim: #1c1a19;
       --surface-1: #262322;
-      --surface-2: #2e2a28;
+      --surface-2: #211f1e;
       --surface-hi: #33302e;
       --edge-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 40%);
+      --specular: none;
     }
   }
 }

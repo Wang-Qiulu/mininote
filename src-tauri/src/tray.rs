@@ -12,12 +12,22 @@ use tauri::{AppHandle, Emitter, Manager};
 /// 前端确认「已保存完，可以退了」的信号
 static QUIT_READY: AtomicBool = AtomicBool::new(false);
 
+/// 用户主动点了「退出」。用于区分「关闭最后一个窗口」与「真正退出」——
+/// 前者必须阻止退出（菜单栏应用的托盘和快捷键得留着），后者不能拦。
+static QUIT_REQUESTED: AtomicBool = AtomicBool::new(false);
+
 pub fn quit_ready() {
     QUIT_READY.store(true, Ordering::SeqCst);
 }
 
+/// 是否是用户主动要求退出
+pub fn is_quit_requested() -> bool {
+    QUIT_REQUESTED.load(Ordering::SeqCst)
+}
+
 /// 通知前端保存并退出；等待前端确认（最多 1.2 秒）后退出
 fn request_quit(app: &AppHandle) {
+    QUIT_REQUESTED.store(true, Ordering::SeqCst);
     QUIT_READY.store(false, Ordering::SeqCst);
     let _ = app.emit("app-quitting", ());
 

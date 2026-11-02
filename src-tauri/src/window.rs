@@ -16,11 +16,19 @@ fn webview(app: &AppHandle) -> Option<tauri::WebviewWindow> {
 }
 
 pub fn show(app: &AppHandle) {
-    if let Some(w) = webview(app) {
-        let _ = w.show();
-        let _ = w.unminimize();
-        let _ = w.set_focus();
-    }
+    let Some(w) = webview(app) else { return };
+    let _ = w.show();
+    let _ = w.unminimize();
+
+    // 关键：tao 的 set_focus 有前置守卫（窗口必须已 isVisible），而 show() 是
+    // 异步投递到主线程的。若紧挨着调用 set_focus，此刻窗口还不可见，
+    // set_focus 会被直接跳过，其中的 activateIgnoringOtherApps:YES 永不执行，
+    // 结果就是 Accessory 应用的窗口永远压在别的应用下面。
+    // 把聚焦排到主线程队列的 show 之后，FIFO 保证顺序。
+    let w2 = w.clone();
+    let _ = app.run_on_main_thread(move || {
+        let _ = w2.set_focus();
+    });
 }
 
 pub fn hide(app: &AppHandle) {

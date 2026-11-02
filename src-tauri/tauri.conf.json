@@ -23,12 +23,15 @@
         "maxWidth": 1200,
         "maxHeight": 900,
         "resizable": true,
+        "maximizable": false,
+        "minimizable": false,
         "transparent": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "visible": false,
         "center": true,
-        "focus": true,
+        "focus": false,
+        "acceptFirstMouse": true,
         "windowEffects": {
           "effects": ["liquidGlassRegular"],
           "state": "followsWindowActiveState",
@@ -52,7 +55,8 @@
       "icons/icon.icns"
     ],
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.0",
+      "infoPlist": "Info.plist"
     }
   }
 }

@@ -65,8 +65,8 @@ export default function App() {
     <div className="app" data-mode={mode} data-morphing={morphing}>
       <div className="grain" />
 
-      <header className="titlebar" data-tauri-drag-region>
-        <div className="titlebar__spacer" data-tauri-drag-region>
+      <header className="titlebar" data-tauri-drag-region="deep">
+        <div className="titlebar__spacer" data-tauri-drag-region="deep">
           {mode === "expanded" ? "全部笔记" : ""}
         </div>
         <div className="titlebar__actions">

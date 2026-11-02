@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "app": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "test:roundtrip": "node scripts/roundtrip-test.mjs",
+    "test:escape": "node scripts/escape-accumulation-test.mjs",
+    "icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {
     "@tiptap/extension-bubble-menu": "^3.32.2",

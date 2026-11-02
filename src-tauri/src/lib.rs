@@ -239,6 +239,15 @@ pub fn run() {
             set_window_mode,
             quit_ready,
         ])
-        .run(tauri::generate_context!())
-        .expect("启动小记事本失败");
+        .build(tauri::generate_context!())
+        .expect("构建小记事本失败")
+        .run(|_app, event| {
+            // 菜单栏应用：关掉窗口不等于退出，托盘图标与全局快捷键必须留着。
+            // 只有用户从托盘菜单明确选了「退出」才真正结束进程。
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if !tray::is_quit_requested() {
+                    api.prevent_exit();
+                }
+            }
+        });
 }
