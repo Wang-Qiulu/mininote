@@ -1,0 +1,604 @@
+/* ==========================================================================
+   全局样式
+   窗口本身是透明玻璃（macOS Liquid Glass），
+   这里只叠加：承载文字的 scrim、玻璃边缘描边、噪点、阴影与动效。
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--text);
+  background: transparent;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  cursor: default;
+  user-select: none;
+}
+
+/* 正文区域允许选中 */
+.selectable,
+.pm,
+.pm * {
+  user-select: text;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: default;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- 噪点：消除大面积半透明渐变的色带，并带来一点实体感 ---- */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+
+/* ==========================================================================
+   玻璃表面
+   ========================================================================== */
+
+.glass {
+  position: relative;
+  background: var(--surface-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1), var(--inner-hi);
+}
+
+/* 渐变描边模拟边缘折射光：上下缘亮、两侧暗 */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-grad);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   应用外壳
+   ========================================================================== */
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  transform-origin: 50% 0%;
+}
+
+/* 形变过程中内容淡出，避免尺寸变化导致的重排跳变 */
+.app[data-morphing="true"] {
+  opacity: 0;
+  transform: scale(0.975);
+}
+
+/* ---- 标题栏（交通灯浮在上面，左侧留出占位） ---- */
+.titlebar {
+  flex: 0 0 auto;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-2) 0 78px;
+}
+
+.titlebar__spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+
+.titlebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+/* ---- 按钮 ---- */
+.iconbtn {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-xs);
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.iconbtn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.iconbtn:active {
+  transform: scale(0.92);
+}
+
+.iconbtn[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.iconbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- 主体 ---- */
+.shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+/* ---- 侧栏（仅大窗） ---- */
+.sidebar {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-right: 1px solid var(--stroke-soft);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.app[data-mode="expanded"] .sidebar {
+  width: 264px;
+}
+
+.sidebar__inner {
+  width: 264px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+
+/* ---- 编辑区 ---- */
+.editorPane {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--scrim);
+}
+
+.editorScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--sp-4) var(--sp-5);
+}
+
+.app[data-mode="expanded"] .editorScroll {
+  padding: 0 var(--sp-5) var(--sp-6);
+}
+
+/* ---- 滚动条：细、只在悬停时显形 ---- */
+.scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color var(--dur-base) var(--ease-out);
+}
+
+.scroll:hover {
+  scrollbar-color: var(--stroke-strong) transparent;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--stroke-strong);
+  background-clip: content-box;
+}
+
+/* ==========================================================================
+   标题输入
+   ========================================================================== */
+
+.titleInput {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  color: var(--text);
+}
+
+.titleInput::placeholder {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   ProseMirror
+   ========================================================================== */
+
+.pm {
+  outline: none;
+  font-size: var(--fs-body);
+  line-height: 1.68;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.pm > *:first-child {
+  margin-top: 0;
+}
+
+.pm p {
+  margin: 0 0 0.5em;
+}
+
+.pm h1,
+.pm h2,
+.pm h3 {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 1.1em 0 0.35em;
+}
+
+.pm h1 {
+  font-size: 1.16em;
+}
+
+.pm h2 {
+  font-size: 1.08em;
+}
+
+.pm h3 {
+  font-size: 1em;
+}
+
+.pm ul,
+.pm ol {
+  margin: 0.35em 0 0.6em;
+  padding-left: 1.3em;
+}
+
+.pm li {
+  margin: 0.15em 0;
+}
+
+.pm li > p {
+  margin: 0;
+}
+
+.pm strong {
+  font-weight: 650;
+}
+
+.pm code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.12em 0.34em;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.pm pre {
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  margin: 0.5em 0 0.7em;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.pm pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.pm blockquote {
+  margin: 0.5em 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--stroke-strong);
+  color: var(--text-2);
+}
+
+.pm hr {
+  border: 0;
+  border-top: 1px solid var(--stroke-soft);
+  margin: 1em 0;
+}
+
+.pm a {
+  color: var(--accent-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-soft);
+}
+
+/* 任务清单 */
+.pm ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.3em 0 0.6em;
+}
+
+.pm ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0.2em 0;
+}
+
+.pm ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.22em;
+  user-select: none;
+}
+
+.pm ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pm ul[data-type="taskList"] input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--stroke-strong);
+  background: transparent;
+  display: grid;
+  place-content: center;
+  cursor: default;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.pm ul[data-type="taskList"] input[type="checkbox"]::after {
+  content: "";
+  width: 8px;
+  height: 4.5px;
+  border-left: 1.6px solid var(--surface-hi);
+  border-bottom: 1.6px solid var(--surface-hi);
+  transform: rotate(-45deg) scale(0.5);
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-spring);
+  margin-top: -1.5px;
+}
+
+.pm ul[data-type="taskList"] input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.pm ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+  opacity: 1;
+  transform: rotate(-45deg) scale(1);
+}
+
+.pm ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--stroke-strong);
+}
+
+/* 占位符 */
+.pm .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-3);
+}
+
+/* ProseMirror 选区拖拽 */
+.pm .ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  border-radius: var(--r-xs);
+}
+
+/* ==========================================================================
+   浮层工具条（选区气泡）
+   ========================================================================== */
+
+.bubble {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--surface-hi);
+  box-shadow: var(--shadow-pop), var(--inner-hi);
+  backdrop-filter: saturate(1.6);
+}
+
+.bubble button {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  display: grid;
+  place-items: center;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.bubble button:hover {
+  background: var(--surface-1);
+  color: var(--text);
+}
+
+.bubble button[data-on="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.bubble__sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--stroke-soft);
+}
+
+/* ==========================================================================
+   临时占位样式（P0 走查用，后续阶段替换）
+   ========================================================================== */
+
+.badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  margin-right: 2px;
+  border-radius: 99px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.empty,
+.placeholder {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.placeholder {
+  padding: var(--sp-4) 0;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+}
+
+.row__pin {
+  font-size: var(--fs-xs);
+  color: var(--accent-text);
+}
+
+.row__title {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   动效偏好
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 关闭玻璃层（macOS「减弱透明度」）时降级为实色面板 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --scrim: #f7f6f4;
+    --surface-1: #ffffff;
+    --surface-2: #f1efec;
+    --surface-hi: #ffffff;
+    --edge-grad: linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0) 40%);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --scrim: #1c1a19;
+      --surface-1: #262322;
+      --surface-2: #2e2a28;
+      --surface-hi: #33302e;
+      --edge-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 40%);
+    }
+  }
+}
