@@ -99,10 +99,11 @@ fn save_note(
     id: String,
     title: String,
     body: String,
+    expected: Option<String>,
     state: State<AppState>,
 ) -> Result<NoteMeta, String> {
     let dir = state.dir();
-    let meta = notes::save_note(&dir, &id, &title, &body)?;
+    let meta = notes::save_note(&dir, &id, &title, &body, expected.as_deref())?;
     state.mark_written(&dir.join(format!("{}.md", meta.id)));
     Ok(meta)
 }

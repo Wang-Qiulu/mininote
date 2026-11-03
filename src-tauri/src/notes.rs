@@ -38,9 +38,13 @@ pub struct NoteMeta {
 #[serde(rename_all = "camelCase")]
 pub struct NotePatch {
     pub id: String,
+    #[serde(default)]
     pub title: Option<String>,
+    #[serde(default)]
     pub pinned: Option<bool>,
+    #[serde(default)]
     pub due: Option<String>,
+    #[serde(default)]
     pub done: Option<bool>,
 }
 
@@ -363,16 +367,26 @@ pub fn create_note(dir: &Path, title: &str, body: &str) -> Result<NoteMeta, Stri
     Ok(meta)
 }
 
-/// 更新正文与标题，保留 pinned / due / done
+/// 更新正文与标题，保留 pinned / due / done。
+///
+/// `expected` 是客户端载入时的正文。若磁盘上的正文已经和它不一致，
+/// 说明文件在应用之外被改过，此时拒绝覆盖，把冲突交还给调用方。
 pub fn save_note(
     dir: &Path,
     id: &str,
     title: &str,
     body: &str,
+    expected: Option<&str>,
 ) -> Result<NoteMeta, String> {
     let path = dir.join(format!("{id}.md"));
-    let mut meta = read_note_file(&path)
-        .ok_or_else(|| format!("找不到笔记 {id}"))?;
+    let mut meta = read_note_file(&path).ok_or_else(|| format!("找不到笔记 {id}"))?;
+
+    if let Some(exp) = expected {
+        if meta.body.trim() != exp.trim() {
+            return Err("文件已被外部修改".to_string());
+        }
+    }
+
     meta.title = if title.trim().is_empty() {
         "无标题".to_string()
     } else {
@@ -487,5 +501,114 @@ mod tests {
     fn sanitize_keeps_cjk_and_drops_unsafe() {
         assert_eq!(sanitize_stem("周会: 讨论/路线图"), "周会讨论路线图");
         assert_eq!(sanitize_stem("   "), "note");
+    }
+
+    /// 存储层端到端：真实文件系统上的 新建 → 读回 → 改正文 → 改元数据 → 列表 → 删除
+    #[test]
+    fn storage_roundtrip_on_real_filesystem() {
+        let dir = std::env::temp_dir().join(format!("mininote-test-{}", short_suffix()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // 新建
+        let meta = create_note(&dir, "周会纪要", "第一段\n\n- [ ] 待办\n").unwrap();
+        assert_eq!(meta.title, "周会纪要");
+        assert_eq!(meta.todo_total, 1);
+        assert_eq!(meta.todo_done, 0);
+        assert!(meta.due.is_none());
+
+        // 文件确实落盘，且是合法的 markdown + frontmatter
+        let path = dir.join(format!("{}.md", meta.id));
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(raw.starts_with("---\n"), "frontmatter 开头: {raw:?}");
+        assert!(raw.contains("title: 周会纪要"));
+        assert!(raw.contains("- [ ] 待办"));
+
+        // 读回来
+        let back = read_note_file(&path).unwrap();
+        assert_eq!(back.title, "周会纪要");
+        assert_eq!(back.body, "第一段\n\n- [ ] 待办");
+        assert_eq!(back.todo_total, 1);
+
+        // 改正文
+        let saved = save_note(&dir, &meta.id, "周会纪要", "改过的正文\n\n- [x] 做好了", None).unwrap();
+        assert_eq!(saved.todo_done, 1);
+        assert_eq!(saved.todo_total, 1);
+        assert!(saved.updated.as_str() >= meta.updated.as_str());
+
+        // 磁盘版本对不上时必须拒绝覆盖，绝不静默吞掉外部修改
+        let conflict = save_note(
+            &dir,
+            &meta.id,
+            "周会纪要",
+            "会覆盖掉别人改的内容",
+            Some("客户端载入时的旧正文"),
+        );
+        assert!(conflict.is_err(), "应当报告冲突而不是覆盖");
+        let still = read_note_file(&path).unwrap();
+        assert_eq!(still.body, "改过的正文\n\n- [x] 做好了", "冲突时磁盘内容不能被改");
+
+        // 版本一致时正常写入
+        let ok = save_note(
+            &dir,
+            &meta.id,
+            "周会纪要",
+            "改过的正文\n\n- [x] 做好了",
+            Some("改过的正文\n\n- [x] 做好了"),
+        )
+        .unwrap();
+        assert_eq!(ok.body, "改过的正文\n\n- [x] 做好了");
+
+        // 改元数据不应动正文
+        let patched = patch_note(
+            &dir,
+            &NotePatch {
+                id: meta.id.clone(),
+                title: None,
+                pinned: Some(true),
+                due: Some("2026-11-05".into()),
+                done: None,
+            },
+        )
+        .unwrap();
+        assert!(patched.pinned);
+        assert_eq!(patched.due.as_deref(), Some("2026-11-05"));
+        assert_eq!(patched.body, "改过的正文\n\n- [x] 做好了");
+
+        // 清空到期日
+        let cleared = patch_note(
+            &dir,
+            &NotePatch {
+                id: meta.id.clone(),
+                title: None,
+                pinned: None,
+                due: Some(String::new()),
+                done: None,
+            },
+        )
+        .unwrap();
+        assert!(cleared.due.is_none());
+
+        // 列表
+        let list = list_notes(&dir);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, meta.id);
+
+        // 摘要取自正文
+        assert!(list[0].preview.contains("改过的正文"));
+
+        // 删除
+        delete_note(&dir, &meta.id).unwrap();
+        assert!(list_notes(&dir).is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn empty_title_falls_back() {
+        let dir = std::env::temp_dir().join(format!("mininote-test-{}", short_suffix()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let meta = create_note(&dir, "   ", "正文").unwrap();
+        assert_eq!(meta.title, "无标题");
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

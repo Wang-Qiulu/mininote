@@ -229,6 +229,43 @@ textarea {
   background: var(--scrim);
 }
 
+.notePane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notePane__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-4) var(--sp-2);
+}
+
+.app[data-mode="expanded"] .notePane__head {
+  padding-left: var(--sp-5);
+  padding-right: var(--sp-5);
+}
+
+.saveDot {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.saveDot--saved {
+  color: var(--accent-text);
+}
+
+.saveDot--error,
+.saveDot--conflict {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .editorScroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -562,6 +599,21 @@ textarea {
   gap: 6px;
   padding: 6px 8px;
   border-radius: var(--r-sm);
+  cursor: default;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.row:hover {
+  background: var(--surface-1);
+}
+
+.row[data-current="true"] {
+  background: var(--accent-soft);
+}
+
+.row[data-current="true"] .row__title {
+  color: var(--accent-text);
+  font-weight: 600;
 }
 
 .row__pin {

@@ -1,19 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Maximize2, Minimize2, FolderOpen, SquarePen } from "lucide-react";
 import { api } from "./lib/api";
 import { pendingTodoCount } from "./lib/time";
 import { useAppStore } from "./store/appStore";
+import { EditorPane } from "./components/EditorPane";
 
 export default function App() {
-  const [dir, setDir] = useState("");
   const mode = useAppStore((s) => s.mode);
   const morphing = useAppStore((s) => s.morphing);
   const notes = useAppStore((s) => s.notes);
+  const currentId = useAppStore((s) => s.currentId);
   const setNotes = useAppStore((s) => s.setNotes);
   const setMode = useAppStore((s) => s.setMode);
   const setMorphing = useAppStore((s) => s.setMorphing);
   const setLoaded = useAppStore((s) => s.setLoaded);
+  const setCurrentId = useAppStore((s) => s.setCurrentId);
 
   // Rust 侧驱动形变动画，前端只做内容层淡化
   useEffect(() => {
@@ -21,11 +23,7 @@ export default function App() {
     const cleanups: Array<() => void> = [];
 
     void (async () => {
-      const [
-        offStart,
-        offEnd,
-        offChanged,
-      ] = await Promise.all([
+      const [offStart, offEnd, offChanged] = await Promise.all([
         listen<string>("window-mode-start", () => setMorphing(true)),
         listen<string>("window-mode-end", (e) => {
           setMode(e.payload === "expanded" ? "expanded" : "mini");
@@ -47,17 +45,18 @@ export default function App() {
       cleanups.push(offStart, offEnd, offChanged);
     })();
 
+    // 启动时打开最近编辑的那条
     void api.listNotes().then((list) => {
       setNotes(list);
       setLoaded(true);
+      setCurrentId(list[0]?.id ?? null);
     });
-    void api.notesDir().then(setDir);
 
     return () => {
       disposed = true;
       cleanups.forEach((fn) => fn());
     };
-  }, [setNotes, setMode, setMorphing, setLoaded]);
+  }, [setNotes, setMode, setMorphing, setLoaded, setCurrentId]);
 
   const pending = pendingTodoCount(notes);
 
@@ -78,7 +77,7 @@ export default function App() {
           <button
             className="iconbtn"
             title="新建笔记"
-            onClick={() => void api.setWindowMode("mini")}
+            onClick={() => setCurrentId(null)}
           >
             <SquarePen size={14} strokeWidth={2} />
           </button>
@@ -93,11 +92,7 @@ export default function App() {
               <Maximize2 size={14} strokeWidth={2} />
             )}
           </button>
-          <button
-            className="iconbtn"
-            title={dir ? `打开笔记目录：${dir}` : "打开笔记目录"}
-            onClick={() => void api.openNotesDir()}
-          >
+          <button className="iconbtn" title="打开笔记目录" onClick={() => void api.openNotesDir()}>
             <FolderOpen size={14} strokeWidth={2} />
           </button>
         </div>
@@ -108,7 +103,12 @@ export default function App() {
           <div className="sidebar__inner scroll">
             {notes.length === 0 && <p className="empty">还没有笔记</p>}
             {notes.map((n) => (
-              <div key={n.id} className="row">
+              <div
+                key={n.id}
+                className="row"
+                data-current={n.id === currentId}
+                onClick={() => setCurrentId(n.id)}
+              >
                 {n.pinned && <span className="row__pin">置顶</span>}
                 <span className="row__title">{n.title || "无标题"}</span>
               </div>
@@ -117,9 +117,7 @@ export default function App() {
         </aside>
 
         <section className="editorPane">
-          <div className="editorScroll scroll">
-            <p className="placeholder">编辑器将在下一阶段接入（TipTap 所见即所得）</p>
-          </div>
+          <EditorPane noteId={currentId} />
         </section>
       </div>
     </div>
