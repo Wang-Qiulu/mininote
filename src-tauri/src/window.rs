@@ -123,6 +123,31 @@ fn spring(t: f64) -> f64 {
     }
 }
 
+/// 把窗口放到屏幕可用区域的右上角。
+///
+/// 用的是 monitor 的 work_area —— 它在 macOS 上是菜单栏以下、程序坞以外的
+/// 区域，正好是「贴着菜单栏右下角」该待的地方。
+pub fn move_to_top_right(app: &AppHandle) {
+    let Some(w) = webview(app) else { return };
+    let Ok(Some(monitor)) = w.current_monitor() else { return };
+
+    let sf = monitor.scale_factor();
+    let area = monitor.work_area();
+    let (ax, ay) = (area.position.x as f64 / sf, area.position.y as f64 / sf);
+    let aw = area.size.width as f64 / sf;
+
+    let Ok(size) = w.outer_size() else { return };
+    let ww = size.width as f64 / sf;
+
+    /// 离屏幕右边缘和菜单栏下沿的留白
+    const MARGIN: f64 = 10.0;
+
+    let x = ax + aw - ww - MARGIN;
+    let y = ay + MARGIN;
+    let _ = w.set_position(LogicalPosition::new(x, y));
+    eprintln!("[窗口] 定位到右上角 {x:.0},{y:.0}（工作区宽 {aw:.0}，窗口宽 {ww:.0}，留白 {MARGIN:.0}）");
+}
+
 /// 切换小窗 / 大窗。
 ///
 /// - 只改宽度，高度锁死

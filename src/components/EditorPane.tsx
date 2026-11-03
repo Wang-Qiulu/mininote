@@ -44,7 +44,7 @@ interface Props {
  * 磁盘文件是最终的真相源，自动保存把 Markdown 写回 Rust 侧。
  */
 export function EditorPane({ noteId }: Props) {
-  const notes = useAppStore((s) => s.notes);
+  const loaded = useAppStore((s) => s.loaded);
   const upsertNote = useAppStore((s) => s.upsertNote);
   const setCurrentId = useAppStore((s) => s.setCurrentId);
 
@@ -58,6 +58,11 @@ export function EditorPane({ noteId }: Props) {
   /** 程序化写入编辑器时抑制 onUpdate，避免把刚加载的内容当成用户修改 */
   const suppressRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 标题输入框。新建笔记后光标要落在这里。 */
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  /** 最新的当前笔记 id。落盘时用它判断「用户还在不在这条新笔记上」。 */
+  const currentIdRef = useRef<string | null>(noteId);
+  currentIdRef.current = noteId;
 
   const [title, setTitle] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -80,8 +85,10 @@ export function EditorPane({ noteId }: Props) {
           return;
         }
         const meta = await api.createNote(t, body);
-        idRef.current = meta.id;
-        setCurrentId(meta.id);
+        // 期间用户可能已经切到别的笔记去了：只有在还停留在这条新笔记上
+        // 时才认领它的 id、才把选中项切过去，否则会抢走用户的导航。
+        if (idRef.current === null) idRef.current = meta.id;
+        if (currentIdRef.current === null) setCurrentId(meta.id);
         upsertNote(meta);
       }
       baselineRef.current = body;
@@ -144,32 +151,43 @@ export function EditorPane({ noteId }: Props) {
     },
   });
 
-  // 切换笔记时把内容装载进编辑器
+  // 切换笔记时把内容装载进编辑器。
+  //
+  // 依赖里刻意不放 notes：笔记列表每保存一次就会变，若把它当依赖，
+  // 列表一更新就重新装载一次，正在编辑的内容会被冲掉。
   useEffect(() => {
-    if (!editor) return;
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) {
-      // 新笔记：清空
-      suppressRef.current = true;
-      editor.commands.setContent("", { contentType: "markdown" });
-      suppressRef.current = false;
-      idRef.current = null;
-      bodyRef.current = "";
-      titleRef.current = "";
-      baselineRef.current = "";
-      dirtyRef.current = false;
-      setTitle("");
-      setSaveState("idle");
-      // 新建笔记后直接能打字。窗口本身还没获得焦点时不要抢——
-      // 应用常驻托盘，启动时若把光标抢走会打断用户正在做的事。
-      if (document.hasFocus()) {
-        editor.commands.focus();
+    if (!editor || !loaded) return;
+
+    if (noteId === null) {
+      const reset = () => {
+        suppressRef.current = true;
+        editor.commands.setContent("", { contentType: "markdown" });
+        suppressRef.current = false;
+        idRef.current = null;
+        bodyRef.current = "";
+        titleRef.current = "";
+        baselineRef.current = "";
+        dirtyRef.current = false;
+        setTitle("");
+        setSaveState("idle");
+        // 新建笔记后光标落在标题上，直接就能起标题。
+        // 窗口本身还没获得焦点时不要抢——应用常驻托盘，
+        // 启动时若把光标抢走会打断用户正在做的事。
+        if (document.hasFocus()) {
+          titleInputRef.current?.focus();
+        }
+      };
+      // 上一条笔记还有没写完的改动：先写盘再清空，否则内容会被抹掉
+      if (dirtyRef.current) {
+        void flushRef.current().then(reset);
+        return;
       }
+      reset();
       return;
     }
-    if (idRef.current === note.id) return; // 已经装载过
+
     let cancelled = false;
-    void api.readNote(note.id).then((full) => {
+    void api.readNote(noteId).then((full) => {
       if (cancelled || !full) return;
       suppressRef.current = true;
       editor.commands.setContent(full.body, { contentType: "markdown" });
@@ -185,7 +203,7 @@ export function EditorPane({ noteId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [editor, noteId, notes, setTitle, setSaveState]);
+  }, [editor, noteId, loaded, setTitle, setSaveState]);
 
   // 离开页面前把未保存的内容冲掉
   useEffect(() => {
@@ -242,10 +260,18 @@ export function EditorPane({ noteId }: Props) {
       <div className="notePane__head">
         <input
           className="titleInput"
+          ref={titleInputRef}
           value={title}
           placeholder="无标题"
           spellCheck={false}
           onChange={(e) => onTitleChange(e.target.value)}
+          onKeyDown={(e) => {
+            // 回车跳到正文：标题写完直接往下写，不用去点正文
+            if (e.key === "Enter") {
+              e.preventDefault();
+              editor?.commands.focus();
+            }
+          }}
         />
         <SaveIndicator state={saveState} />
       </div>

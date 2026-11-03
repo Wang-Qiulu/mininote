@@ -248,6 +248,8 @@ pub fn run() {
 
             tray::setup(app.handle())?;
             watcher::start(app.handle(), dir);
+            // 默认停在屏幕右上角，贴着菜单栏
+            window::move_to_top_right(app.handle());
 
             // 注册全局快捷键：Cmd + Shift + Space
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
