@@ -164,6 +164,22 @@ fn quit_ready() {
     tray::quit_ready();
 }
 
+/// 是否已获得 macOS「辅助功能」权限。没有它，全局快捷键会被系统静默丢弃。
+#[tauri::command]
+fn accessibility_granted() -> bool {
+    has_accessibility_permission()
+}
+
+/// 打开系统设置里的「辅助功能」面板，让用户一键授权
+#[tauri::command]
+fn open_accessibility_settings() -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("无法打开系统设置: {e}"))
+}
+
 #[tauri::command]
 fn hide_window(app: tauri::AppHandle) {
     window::hide(&app);
@@ -180,6 +196,20 @@ fn set_window_mode(mode: String, app: tauri::AppHandle) {
     window::set_mode(&app, &mode);
 }
 
+// ---------- 辅助功能权限 ----------
+
+// macOS 上用 CGEvent 注册全局快捷键需要「辅助功能」权限。
+// 没有权限时系统会**静默丢弃**快捷键：不报错、不弹窗，快捷键就是没反应。
+// 这个函数用来在启动时把真实状态查出来，别让用户对着一个不存在的快捷键发呆。
+#[link(name = "ApplicationServices", kind = "framework")]
+extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+pub fn has_accessibility_permission() -> bool {
+    unsafe { AXIsProcessTrusted() }
+}
+
 // ---------- 入口 ----------
 
 pub fn run() {
@@ -188,8 +218,10 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, _shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        window::show(app);
-                        let _ = app.emit("focus-editor", ());
+                        // 同一个快捷键：开 / 关
+                        if window::toggle(app) {
+                            let _ = app.emit("focus-editor", ());
+                        }
                     }
                 })
                 .build(),
@@ -214,8 +246,12 @@ pub fn run() {
             // 注册全局快捷键：Cmd + Shift + Space
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
             let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::Space);
-            if let Err(e) = app.handle().global_shortcut().register(shortcut) {
-                eprintln!("注册全局快捷键失败: {e}");
+            match app.handle().global_shortcut().register(shortcut) {
+                Ok(()) => {
+                    let trusted = has_accessibility_permission();
+                    eprintln!("[快捷键] ⌘⇧Space 注册成功；辅助功能权限：{}", if trusted { "已授予" } else { "未授予（系统会静默丢弃快捷键）" });
+                }
+                Err(e) => eprintln!("[快捷键] ⌘⇧Space 注册失败: {e}"),
             }
 
             if first_run || std::env::var("MININOTE_SHOW").is_ok() {
@@ -239,6 +275,8 @@ pub fn run() {
             toggle_window,
             set_window_mode,
             quit_ready,
+            accessibility_granted,
+            open_accessibility_settings,
         ])
         .build(tauri::generate_context!())
         .expect("构建小记事本失败")

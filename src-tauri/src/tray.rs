@@ -68,7 +68,9 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 crate::window::show(app);
                 let _ = app.emit("new-note", ());
             }
-            "toggle" => crate::window::toggle(app),
+            "toggle" => {
+                crate::window::toggle(app);
+            }
             "open_dir" => {
                 let dir = app
                     .state::<crate::AppState>()

@@ -16,7 +16,10 @@ fn webview(app: &AppHandle) -> Option<tauri::WebviewWindow> {
 }
 
 pub fn show(app: &AppHandle) {
-    let Some(w) = webview(app) else { return };
+    let Some(w) = webview(app) else {
+        eprintln!("[窗口] 找不到 main 窗口");
+        return;
+    };
     let _ = w.show();
     let _ = w.unminimize();
 
@@ -28,6 +31,11 @@ pub fn show(app: &AppHandle) {
     let w2 = w.clone();
     let _ = app.run_on_main_thread(move || {
         let _ = w2.set_focus();
+        eprintln!(
+            "[窗口] 已请求显示：visible={:?} focused={:?}",
+            w2.is_visible(),
+            w2.is_focused()
+        );
     });
 }
 
@@ -37,13 +45,15 @@ pub fn hide(app: &AppHandle) {
     }
 }
 
-pub fn toggle(app: &AppHandle) {
-    if let Some(w) = webview(app) {
-        if w.is_visible().unwrap_or(false) {
-            hide(app);
-        } else {
-            show(app);
-        }
+/// 显示/隐藏切换。返回 true 表示这次是「显示」。
+pub fn toggle(app: &AppHandle) -> bool {
+    let Some(w) = webview(app) else { return false };
+    if w.is_visible().unwrap_or(false) {
+        hide(app);
+        false
+    } else {
+        show(app);
+        true
     }
 }
 
