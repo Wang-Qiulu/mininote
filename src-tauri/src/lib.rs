@@ -237,8 +237,6 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let dir = default_notes_dir();
-            // 首次运行：目录还不存在，视为新装，弹一次窗口做引导
-            let first_run = !dir.exists();
             ensure_dir(&dir);
             app.manage(AppState {
                 notes_dir: Mutex::new(dir.clone()),
@@ -262,9 +260,12 @@ pub fn run() {
                 Err(e) => eprintln!("[快捷键] ⌘⇧Space 注册失败: {e}"),
             }
 
-            if first_run || std::env::var("MININOTE_SHOW").is_ok() {
-                window::show(app.handle());
-            }
+            // 启动就把小窗显示出来。
+            //
+            // 这是菜单栏应用最容易被误解的地方：没有 Dock 图标，如果启动后
+            // 什么都不发生，用户会以为没装上、也不知道该去哪里找。
+            // 「双击 → 右上角立刻出现小窗」是最不容易误解的反馈。
+            window::show(app.handle());
 
             // 自测钩子：MININOTE_MORPH_TEST=1 启动后自动展开再收回。
             // 刻意走和用户点按钮完全一样的路径（同一个命令函数），
@@ -304,13 +305,19 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("构建小记事本失败")
-        .run(|_app, event| {
-            // 菜单栏应用：关掉窗口不等于退出，托盘图标与全局快捷键必须留着。
-            // 只有用户从托盘菜单明确选了「退出」才真正结束进程。
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+        .run(|app, event| match event {
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                // 菜单栏应用：关掉窗口不等于退出，托盘图标与全局快捷键必须留着。
+                // 只有用户从托盘菜单明确选了「退出」才真正结束进程。
                 if !tray::is_quit_requested() {
                     api.prevent_exit();
                 }
             }
+            // 应用已经在跑，用户又双击了一次 .app：macOS 不会启动新进程，
+            // 只会发一个 Reopen。把它变成「把小窗叫出来」，免得用户以为没反应。
+            tauri::RunEvent::Reopen { .. } => {
+                window::show(app);
+            }
+            _ => {}
         });
 }
