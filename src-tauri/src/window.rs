@@ -92,15 +92,19 @@ pub fn toggle(app: &AppHandle) -> bool {
     }
 }
 
-/// 大窗目标宽度：屏幕的 55%，并夹在合理区间内。高度始终不变。
+/// 大窗目标宽度：侧栏 360 + 笔记 360 = 720。
+///
+/// 侧栏用 `flex: 1 1 auto` 吸收多出来的宽度，笔记区锁死 360，
+/// 所以窗口多宽侧栏就是多宽——定成 720 侧栏正好也是 360。
 fn expanded_width(app: &AppHandle, current: f64) -> f64 {
-    let mut target = 900.0;
+    let mut target = MINI_W * 2.0;
     if let Some(wv) = webview(app) {
         if let Ok(Some(monitor)) = wv.current_monitor() {
             let size = monitor.size();
             let sf = monitor.scale_factor();
             let sw = size.width as f64 / sf;
-            target = (sw * 0.55).clamp(560.0, 1000.0);
+            // 留一点余量，别让窗口顶到屏幕边缘
+            target = target.min((sw - 80.0).max(MINI_W + 160.0));
         }
     }
     // 比现在更宽才有意义

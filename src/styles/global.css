@@ -130,7 +130,8 @@ textarea {
 /* ---- 标题栏（交通灯浮在上面，左侧留出占位） ---- */
 .titlebar {
   flex: 0 0 auto;
-  height: 38px;
+  /* 33px：最初 38px 偏高，压到 28px 又太贴上沿，取两者中间 */
+  height: 33px;
   display: flex;
   align-items: center;
   gap: var(--sp-1);
@@ -213,14 +214,10 @@ textarea {
 
 .sidebar__inner {
   width: 100%;
-  max-width: 420px;
-  /* 贴着笔记那一侧：窗口向左生长时，列表原地不动，
-     多出来的空间在左边展开出去 */
-  margin-left: auto;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0 var(--sp-3) var(--sp-3);
+  padding: 0 var(--sp-2) var(--sp-3);
 }
 
 /* ---- 编辑区 ---- */
@@ -612,7 +609,7 @@ textarea {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 6px 8px 6px 4px;
   border-radius: var(--r-sm);
   cursor: default;
   transition: background var(--dur-fast) var(--ease-out);
