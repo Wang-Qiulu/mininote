@@ -191,9 +191,15 @@ fn toggle_window(app: tauri::AppHandle) {
 }
 
 /// 切换小窗 / 大窗。`mode` 取 "mini" 或 "expanded"。
+///
+/// 形变动画要跑 320ms，**绝不能占着主线程**：Tauri 的同步命令是在主线程上
+/// 执行的，主线程被占住期间窗口无法合成、webview 无法渲染，动画必然卡顿。
+/// 所以这里立刻返回，把动画派到独立线程上跑。
 #[tauri::command]
 fn set_window_mode(mode: String, app: tauri::AppHandle) {
-    window::set_mode(&app, &mode);
+    std::thread::spawn(move || {
+        window::set_mode(&app, &mode);
+    });
 }
 
 // ---------- 辅助功能权限 ----------
@@ -256,6 +262,22 @@ pub fn run() {
 
             if first_run || std::env::var("MININOTE_SHOW").is_ok() {
                 window::show(app.handle());
+            }
+
+            // 自测钩子：MININOTE_MORPH_TEST=1 启动后自动展开再收回。
+            // 刻意走和用户点按钮完全一样的路径（同一个命令函数），
+            // 免得测试路径和实际路径分叉——上一版就是这么漏掉了主线程阻塞的问题。
+            if std::env::var("MININOTE_MORPH_TEST").is_ok() {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    for _ in 0..3 {
+                        set_window_mode("expanded".into(), handle.clone());
+                        std::thread::sleep(std::time::Duration::from_secs(8));
+                        set_window_mode("mini".into(), handle.clone());
+                        std::thread::sleep(std::time::Duration::from_secs(8));
+                    }
+                });
             }
 
             Ok(())

@@ -24,7 +24,13 @@ export default function App() {
 
     void (async () => {
       const [offStart, offEnd, offChanged] = await Promise.all([
-        listen<string>("window-mode-start", () => setMorphing(true)),
+        listen<string>("window-mode-start", (e) => {
+          // 展开时立刻切到展开布局：这样笔记区在整个动画过程中宽度锁死，
+          // 既不会拉伸也不会重排，视觉上完全不动。
+          // 收回时保持展开布局到最后一帧，动画结束后再切回小窗布局。
+          if (e.payload === "expanded") setMode("expanded");
+          setMorphing(true);
+        }),
         listen<string>("window-mode-end", (e) => {
           setMode(e.payload === "expanded" ? "expanded" : "mini");
           setMorphing(false);

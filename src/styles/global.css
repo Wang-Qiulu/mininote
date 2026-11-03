@@ -199,20 +199,24 @@ textarea {
 
 /* ---- 侧栏（仅大窗） ---- */
 .sidebar {
-  flex: 0 0 auto;
-  width: 0;
+  flex: 0 0 0;
+  min-width: 0;
   overflow: hidden;
   background: var(--surface-2);
   border-right: 1px solid var(--stroke-soft);
-  transition: width var(--dur-base) var(--ease-out);
 }
 
+/* 展开时侧栏吃掉所有多出来的宽度，笔记区宽度锁死不动 */
 .app[data-mode="expanded"] .sidebar {
-  width: 264px;
+  flex: 1 1 auto;
 }
 
 .sidebar__inner {
-  width: 264px;
+  width: 100%;
+  max-width: 420px;
+  /* 贴着笔记那一侧：窗口向左生长时，列表原地不动，
+     多出来的空间在左边展开出去 */
+  margin-left: auto;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -227,6 +231,11 @@ textarea {
   flex-direction: column;
   overflow: hidden;
   background: var(--scrim);
+}
+
+/* 展开时笔记宽度锁死：右边缘锚定，笔记本身的位置和排版都不变 */
+.app[data-mode="expanded"] .editorPane {
+  flex: 0 0 360px;
 }
 
 .notePane {
@@ -563,6 +572,12 @@ textarea {
   height: 16px;
   margin: 0 3px;
   background: var(--stroke-soft);
+}
+
+/* 形变过程中：内容整体淡出，同时把列表的子树摘出布局，
+   避免窗口每变一次宽就重排一次列表。笔记区宽度锁死，本来就不重排。 */
+.app[data-morphing="true"] .sidebar__inner {
+  content-visibility: hidden;
 }
 
 /* ==========================================================================
