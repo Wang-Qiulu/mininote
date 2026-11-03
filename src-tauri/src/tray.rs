@@ -45,14 +45,12 @@ fn request_quit(app: &AppHandle) {
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let new_note = MenuItem::with_id(app, "new_note", "新建笔记", true, None::<&str>)?;
     let toggle = MenuItem::with_id(app, "toggle", "显示 / 隐藏小窗", true, None::<&str>)?;
     let open_dir = MenuItem::with_id(app, "open_dir", "打开笔记目录", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
-    let sep2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&new_note, &toggle, &sep1, &open_dir, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&toggle, &sep1, &open_dir, &sep1, &quit])?;
 
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
 
@@ -64,10 +62,6 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
-            "new_note" => {
-                crate::window::show(app);
-                let _ = app.emit("new-note", ());
-            }
             "toggle" => {
                 crate::window::toggle(app);
             }

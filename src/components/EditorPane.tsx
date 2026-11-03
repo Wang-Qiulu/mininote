@@ -160,6 +160,11 @@ export function EditorPane({ noteId }: Props) {
       dirtyRef.current = false;
       setTitle("");
       setSaveState("idle");
+      // 新建笔记后直接能打字。窗口本身还没获得焦点时不要抢——
+      // 应用常驻托盘，启动时若把光标抢走会打断用户正在做的事。
+      if (document.hasFocus()) {
+        editor.commands.focus();
+      }
       return;
     }
     if (idRef.current === note.id) return; // 已经装载过
