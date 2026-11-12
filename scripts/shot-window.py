@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-只截取「小记事本」自己的窗口，不打扰屏幕上的其他内容。
+只截取 mininote 自己的窗口，不打扰屏幕上的其他内容。
 
 用法：
     python3 scripts/shot-window.py [输出路径] [应用名]
 
 原理：用 CoreGraphics 的 CGWindowListCopyWindowInfo 找到 owner 名为
-mininote / 小记事本 的窗口，拿到它的 window number，再交给
+mininote 的窗口，拿到它的 window number，再交给
 `screencapture -l<id>`。只截这一个窗口，不会切换前台应用。
 """
 import ctypes
@@ -15,8 +15,8 @@ import subprocess
 import sys
 import os
 
-# 开发模式下的进程名是 mininote，打包后是产品名「小记事本」
-APP_NAMES = ("mininote", "小记事本")
+# 开发模式与打包后的进程名现在都是 mininote
+APP_NAMES = ("mininote",)
 
 cg = ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
 cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")

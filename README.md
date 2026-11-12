@@ -1,4 +1,4 @@
-# 小记事本 · Mininote
+# mininote
 
 > 一块贴在桌面右上角的玻璃便签。双击 ⌘ 一按即现即写，写完就走。
 
@@ -65,10 +65,10 @@
 
 ### 下载现成的（推荐）
 
-1. 打开 [Releases](https://github.com/Wang-Qiulu/mininote/releases) 页面，下载 `mininote-v0.1.0-macos.zip`（里面是「小记事本.app」）
-2. 解压，把 **小记事本.app** 拖进「应用程序」文件夹
+1. 打开 [Releases](https://github.com/Wang-Qiulu/mininote/releases) 页面，下载 `mininote-v0.1.0-macos.zip`（里面是「mininote.app」）
+2. 解压，把 **mininote.app** 拖进「应用程序」文件夹
 3. 第一次打开：右键点它 → 选「打开」→ 再点「打开」
-   （没做开发者签名，Gatekeeper 会拦一下。命令行放行：`xattr -dr com.apple.quarantine "/Applications/小记事本.app"`）
+   （没做开发者签名，Gatekeeper 会拦一下。命令行放行：`xattr -dr com.apple.quarantine "/Applications/mininote.app"`）
 4. 启动后小窗会**直接出现在屏幕右上角**。之后它就常驻菜单栏了：
 
    ![菜单栏里的图标](docs/menubar-icon.png)
@@ -77,10 +77,18 @@
 
    **没有 Dock 图标是正常的**：这是菜单栏应用，不占 ⌘Tab、不抢任务栏，图标挤在电量、Wi‑Fi 那一堆状态图标里。
 5. 随时**双击 `⌘`** 唤出／收起小窗（同一个动作开、关）；`⌘⇧Space` 是备用键。
-6. 双击 `⌘` 或备用键没反应：系统设置 → 隐私与安全性 → 辅助功能 → 加上「小记事本」。
+6. 双击 `⌘` 或备用键没反应：系统设置 → 隐私与安全性 → 辅助功能 → 加上「mininote」。
    双击修饰键的事件监听和全局快捷键都依赖这个权限；不给的话系统会**静默丢弃**事件，不报错也不弹窗。
 
 **要求：macOS 13 或更高。** macOS 26 及以上会自动换上 Liquid Glass 材质，低版本也有优雅降级。
+
+### 本地安装（开发者推荐）
+
+```bash
+npm run install:local
+```
+
+它每次都从当前源码重新构建，把 `/Applications` 里的旧版和构建目录残留**移到废纸篓**（可恢复），再把产物**移动**成 `/Applications/mininote.app`、重做 ad-hoc 签名并重启。用移动而不是复制，构建目录不会留下第二份 `.app`，启动台里也就不会再出现两个图标。
 
 ### 从源码构建
 
@@ -95,7 +103,7 @@ npm run app          # 开发模式（Vite 热更新 + Rust，改代码立刻见
 npm run app:build    # 打包出 .app
 ```
 
-产物在 `src-tauri/target/release/bundle/macos/小记事本.app`。
+产物在 `src-tauri/target/release/bundle/macos/mininote.app`。
 
 ---
 
@@ -153,11 +161,17 @@ mininote/
 ├── src-tauri/src/
 │   ├── notes.rs               存储层：frontmatter 解析、原子写、CRUD（9 个单测）
 │   ├── window.rs              显隐、定位、形变动画
+│   ├── overlay.rs             全屏 Space 浮窗：windowLevel 与 collectionBehavior
+│   ├── double_cmd.rs          双击 ⌘ 的事件监视与防误触状态机
 │   ├── lib.rs                 生命周期、命令、快捷键、托盘接线
 │   ├── tray.rs                菜单栏图标与菜单
 │   └── watcher.rs             外部文件变更监听
+├── src-tauri/icons/
+│   ├── app-icon-source.png    应用图标源图（换图标改这里）
+│   └── tray.png               菜单栏模板图标
 ├── scripts/
-│   ├── gen-icons.mjs          图标生成（纯 Node，无依赖）
+│   ├── install-local.sh       从源码构建并替换本机安装，只留一份
+│   ├── gen-icons.mjs          生成菜单栏模板图标（纯 Node，无依赖）
 │   ├── roundtrip-test.mjs     Markdown 往返幂等测试（14 个用例）
 │   ├── escape-accumulation-test.mjs  转义累积测试（8 个用例）
 │   └── shot-window.py         只截本应用窗口的截图脚本
@@ -190,6 +204,9 @@ mininote/
 npm run build              # 类型检查 + 打包
 npm run app                # 开发模式
 npm run app:build          # 打包 .app
+npm run install:local      # 构建最新版并替换本机安装，只留一份
+npm run icons              # 只重新生成菜单栏模板图标 tray.png
+npx tauri icon src-tauri/icons/app-icon-source.png  # 换应用图标后重生成全套尺寸
 
 cd src-tauri && cargo test # Rust 单元测试（9 个）
 npm run test:roundtrip     # Markdown 往返幂等

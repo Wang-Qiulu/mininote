@@ -58,7 +58,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .icon(icon)
         // 模板图标：系统按菜单栏深浅色自动反相
         .icon_as_template(true)
-        .tooltip("小记事本")
+        .tooltip("mininote")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {

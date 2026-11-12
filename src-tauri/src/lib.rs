@@ -325,7 +325,7 @@ pub fn run() {
             open_accessibility_settings,
         ])
         .build(tauri::generate_context!())
-        .expect("构建小记事本失败")
+        .expect("构建 mininote 失败")
         .run(|app, event| match event {
             tauri::RunEvent::ExitRequested { api, .. } => {
                 // 菜单栏应用：关掉窗口不等于退出，托盘图标与全局快捷键必须留着。

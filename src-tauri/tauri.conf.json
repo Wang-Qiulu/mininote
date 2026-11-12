@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "小记事本",
+  "productName": "mininote",
   "version": "0.1.0",
   "identifier": "com.wangqiulu.mininote",
   "build": {
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "小记事本",
+        "title": "mininote",
         "width": 360,
         "height": 300,
         "minWidth": 320,
