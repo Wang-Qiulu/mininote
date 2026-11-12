@@ -79,6 +79,11 @@ pub fn show(app: &AppHandle, active: bool) {
         eprintln!("[窗口] 找不到 main 窗口");
         return;
     };
+    // 必须在 set_focus() 抢焦点之前记下前台应用，否则记到的会是 mininote 自己。
+    // 启动时的被动显示（active=false）不抢焦点，也不需要记录。
+    if active {
+        crate::focus::remember();
+    }
     ACTIVE.store(active, Ordering::SeqCst);
     WANT_FOCUS.store(active, Ordering::SeqCst);
 
@@ -114,6 +119,9 @@ pub fn show(app: &AppHandle, active: bool) {
 }
 
 pub fn hide(app: &AppHandle) {
+    // 此刻前台还是不是自己：用户写笔记中途切到别的应用时，收起不该把焦点
+    // 硬拽回旧应用。必须在窗口隐藏之前判断，隐藏后系统可能已经改了前台。
+    let should_restore_focus = crate::focus::is_self_frontmost();
     ACTIVE.store(false, Ordering::SeqCst);
     WANT_FOCUS.store(false, Ordering::SeqCst);
     if let Some(w) = webview(app) {
@@ -123,6 +131,13 @@ pub fn hide(app: &AppHandle) {
         let w2 = w.clone();
         let _ = app.run_on_main_thread(move || {
             crate::overlay::restore(&w2);
+            // 排在窗口隐藏与层级还原之后：先摘掉跨 Space 能力，再把前台
+            // 交还给对方，否则自己的浮窗可能残留在对方的全屏页面上。
+            if should_restore_focus {
+                crate::focus::restore();
+            } else {
+                eprintln!("[焦点] 前台已不是 mininote，跳过归还");
+            }
         });
     }
 }

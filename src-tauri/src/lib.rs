@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager, State};
 
 mod double_cmd;
+mod focus;
 mod notes;
 mod overlay;
 mod tray;
@@ -222,19 +223,6 @@ pub fn has_accessibility_permission() -> bool {
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        // 同一个快捷键：开 / 关。
-                        // 不再在这里直接 emit focus-editor：此刻窗口还没成为 key，
-                        // 前端只会得到一个「假光标」，按键会打进全屏 App 里。
-                        // 聚焦统一由窗口真正拿到焦点之后驱动。
-                        window::toggle(app);
-                    }
-                })
-                .build(),
-        )
         .setup(|app| {
             // 菜单栏常驻：没有 Dock 图标，也没有应用菜单栏
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -265,21 +253,9 @@ pub fn run() {
                 });
             }
 
-            // 主快捷键：双击 ⌘。它走 AppKit 的事件监视器，不走快捷键插件 ——
-            // 「双击修饰键」没法用插件支持的「修饰键 + 主键」表达。
+            // 唯一的快捷键：双击 ⌘。走 AppKit 的事件监视器，
+            // 不注册任何全局快捷键插件。
             double_cmd::setup(app.handle());
-
-            // 备用快捷键：Cmd + Shift + Space。双击 ⌘ 若因权限或第三方占用失效，
-            // 这个键仍然能把窗口叫出来。
-            use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
-            let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::Space);
-            match app.handle().global_shortcut().register(shortcut) {
-                Ok(()) => {
-                    let trusted = has_accessibility_permission();
-                    eprintln!("[快捷键] 备用键 ⌘⇧Space 注册成功；辅助功能权限：{}", if trusted { "已授予" } else { "未授予（系统会静默丢弃按键事件）" });
-                }
-                Err(e) => eprintln!("[快捷键] 备用键 ⌘⇧Space 注册失败: {e}"),
-            }
 
             // 启动就把小窗显示出来。
             //

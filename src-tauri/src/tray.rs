@@ -1,13 +1,14 @@
 //! 菜单栏托盘图标。
 //!
-//! 左侧点击显示/隐藏小窗（菜单栏项目的常见行为），右侧点击弹出菜单。
+//! 左键、右键都展开菜单。菜单里只有版本号和「退出」——
+//! 小窗的显示／隐藏只由「双击 ⌘」负责，不在这里重复。
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::tray::TrayIconBuilder;
+use tauri::{AppHandle, Emitter};
 
 /// 前端确认「已保存完，可以退了」的信号
 static QUIT_READY: AtomicBool = AtomicBool::new(false);
@@ -45,12 +46,18 @@ fn request_quit(app: &AppHandle) {
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let toggle = MenuItem::with_id(app, "toggle", "显示 / 隐藏小窗", true, None::<&str>)?;
-    let open_dir = MenuItem::with_id(app, "open_dir", "打开笔记目录", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-    let sep1 = PredefinedMenuItem::separator(app)?;
+    // 版本号是纯展示项，不可点击；内容直接读 Cargo.toml，升版本时不用改这里。
+    let version = MenuItem::with_id(
+        app,
+        "version",
+        format!("mininote v{}", env!("CARGO_PKG_VERSION")),
+        false,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(app, "quit", "退出 mininote", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&toggle, &sep1, &open_dir, &sep1, &quit])?;
+    let menu = Menu::with_items(app, &[&version, &sep, &quit])?;
 
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
 
@@ -60,35 +67,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .icon_as_template(true)
         .tooltip("mininote")
         .menu(&menu)
-        .show_menu_on_left_click(false)
+        .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
-            "toggle" => {
-                crate::window::toggle(app);
-            }
-            "open_dir" => {
-                let dir = app
-                    .state::<crate::AppState>()
-                    .notes_dir
-                    .lock()
-                    .ok()
-                    .map(|d| d.clone());
-                if let Some(dir) = dir {
-                    let _ = std::fs::create_dir_all(&dir);
-                    let _ = std::process::Command::new("open").arg(&dir).spawn();
-                }
-            }
             "quit" => request_quit(app),
             _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: tauri::tray::MouseButton::Left,
-                button_state: tauri::tray::MouseButtonState::Up,
-                ..
-            } = event
-            {
-                crate::window::show(tray.app_handle(), true);
-            }
         })
         .build(app)?;
 

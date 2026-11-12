@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "mininote的基础权限：窗口显隐与尺寸、全局快捷键",
+  "description": "mininote 的基础权限：窗口显隐与尺寸",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -13,7 +13,6 @@
     "core:window:allow-is-visible",
     "core:window:allow-scale-factor",
     "core:window:allow-start-dragging",
-    "core:webview:allow-internal-toggle-devtools",
-    "global-shortcut:default"
+    "core:webview:allow-internal-toggle-devtools"
   ]
 }

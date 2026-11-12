@@ -1,6 +1,6 @@
 [package]
 name = "mininote"
-version = "0.1.0"
+version = "0.3.0"
 description = "本地运行的 macOS 浮窗速记应用"
 edition = "2021"
 rust-version = "1.82"
@@ -14,16 +14,16 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
-tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 notify = "8"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
-# 直接操作 NSWindow 的 windowLevel / collectionBehavior。
-# 版本与 tauri 的间接依赖一致（Cargo.lock 里已存在），不引入新的传递依赖。
+# 直接操作 NSWindow 的 windowLevel / collectionBehavior，以及前台应用的
+# 记录与激活。版本与 tauri 的间接依赖一致（Cargo.lock 里已存在），不引入
+# 新的传递依赖。
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2-app-kit = { version = "0.3.2", features = ["std", "NSWindow", "NSEvent", "block2"], default-features = false }
+objc2-app-kit = { version = "0.3.2", features = ["std", "NSWindow", "NSEvent", "NSWorkspace", "NSRunningApplication", "libc", "block2"], default-features = false }
 block2 = "0.6.2"
 
 [profile.release]

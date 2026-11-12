@@ -2,7 +2,7 @@
 
 > 一块贴在桌面右上角的玻璃便签。双击 ⌘ 一按即现即写，写完就走。
 
-![平台](https://img.shields.io/badge/平台-macOS%2013%2B-1b1a19) ![版本](https://img.shields.io/badge/版本-v0.1.0-d9662b) ![许可证](https://img.shields.io/badge/许可证-MIT-d9662b) ![状态](https://img.shields.io/badge/状态-早期%20版本-8a8a8a)
+![平台](https://img.shields.io/badge/平台-macOS%2013%2B-1b1a19) ![版本](https://img.shields.io/badge/版本-v0.3.0-d9662b) ![许可证](https://img.shields.io/badge/许可证-MIT-d9662b) ![状态](https://img.shields.io/badge/状态-早期%20版本-8a8a8a)
 
 ![小窗：360×300](docs/screenshot-mini.png)
 
@@ -14,7 +14,7 @@
 
 **轻到几乎不存在。** 菜单栏常驻，没有 Dock 图标，不占 ⌘Tab。小窗只有 360×300，不到 14 寸屏的八分之一，安静地蹲在屏幕右上角贴着菜单栏。
 
-**一按即现即写。** 双击 `⌘` 唤起，**同一个动作开、关**；`⌘⇧Space` 留作备用键。新建笔记时光标直接落在标题上，写完标题按回车就进正文 —— 不用鼠标。
+**一按即现即写。** 双击 `⌘` 唤起，**同一个动作开、关**。这是唯一的快捷键。新建笔记时光标直接落在标题上，写完标题按回车就进正文 —— 不用鼠标。
 
 **写完就走。** 400ms 防抖自动保存，落盘是原子的（先写临时文件再改名），写到一半断电也不会留下半个文件。
 
@@ -30,9 +30,10 @@
 
 ### 窗口与外壳
 
-- 菜单栏托盘常驻（**无 Dock 图标**），托盘菜单：显示/隐藏小窗、打开笔记目录、退出
-- 主快捷键 **双击 `⌘`** —— 同一个动作开/关。判定很严：两次完整的按下—抬起、间隔 300ms 内、中间不能夹任何其他按键，所以 `⌘C` 接 `⌘V` 不会误触
-- 备用快捷键 `⌘⇧Space`；双击监听与备用键都依赖「辅助功能」权限
+- 菜单栏托盘常驻（**无 Dock 图标**）；左键或右键点图标都能展开菜单，菜单里只有当前版本号和「退出」
+- 主快捷键 **双击 `⌘`** —— 同一个动作开/关，也是项目唯一的快捷键。判定很严：两次完整的按下—抬起、间隔 300ms 内、中间不能夹任何其他按键，所以 `⌘C` 接 `⌘V` 不会误触
+- 收起小窗后焦点自动回到唤起前正在用的那个应用，不会让屏幕失焦
+- 双击 `⌘` 的事件监听依赖「辅助功能」权限
 - 小窗 360×300，默认停在**屏幕右上角**（右侧留 10pt，正好在菜单栏下方）
 - 一键展开成 720×300 的「笔记列表 + 笔记」双栏视图：宽度**向左生长**、右边缘锚定，笔记本身纹丝不动；收回时精确还原到原位
 - 关掉窗口只是隐藏，进程、托盘图标和快捷键都还在
@@ -73,22 +74,14 @@
 
    ![菜单栏里的图标](docs/menubar-icon.png)
 
-   这个图标就是入口 —— 点它，菜单里有「显示/隐藏小窗」「打开笔记目录」「退出」。
+   这个图标就是入口 —— 左键或右键点它都能展开菜单，里面显示当前版本号和「退出」。小窗的显示／隐藏只用双击 `⌘`，不走菜单。
 
    **没有 Dock 图标是正常的**：这是菜单栏应用，不占 ⌘Tab、不抢任务栏，图标挤在电量、Wi‑Fi 那一堆状态图标里。
-5. 随时**双击 `⌘`** 唤出／收起小窗（同一个动作开、关）；`⌘⇧Space` 是备用键。
-6. 双击 `⌘` 或备用键没反应：系统设置 → 隐私与安全性 → 辅助功能 → 加上「mininote」。
-   双击修饰键的事件监听和全局快捷键都依赖这个权限；不给的话系统会**静默丢弃**事件，不报错也不弹窗。
+5. 随时**双击 `⌘`** 唤出／收起小窗（同一个动作开、关）。这是唯一的快捷键。
+6. 双击 `⌘` 没反应：系统设置 → 隐私与安全性 → 辅助功能 → 加上「mininote」。
+   双击修饰键的事件监听依赖这个权限；不给的话系统会**静默丢弃**事件，不报错也不弹窗。
 
 **要求：macOS 13 或更高。** macOS 26 及以上会自动换上 Liquid Glass 材质，低版本也有优雅降级。
-
-### 本地安装（开发者推荐）
-
-```bash
-npm run install:local
-```
-
-它每次都从当前源码重新构建，把 `/Applications` 里的旧版和构建目录残留**移到废纸篓**（可恢复），再把产物**移动**成 `/Applications/mininote.app`、重做 ad-hoc 签名并重启。用移动而不是复制，构建目录不会留下第二份 `.app`，启动台里也就不会再出现两个图标。
 
 ### 从源码构建
 
@@ -116,12 +109,9 @@ npm run app:build    # 打包出 .app
 title: 周会纪要
 created: 2026-11-02T14:20:00
 updated: 2026-11-03T15:05:00
-pinned: false
-due: 2026-11-05
-done: false
 ---
 
-讨论了下季度路线图……
+讨论了下季度计划……
 
 - [x] 拉通数据口径
 - [ ] 出设计稿
@@ -141,11 +131,10 @@ done: false
 
 | 层 | 选型 | 为什么 |
 | --- | --- | --- |
-| 外壳 | Tauri 2.12（Rust） | 体积小（.app 只有 3.9 MiB）、能直接用系统的窗口材质和全局快捷键 |
+| 外壳 | Tauri 2.12（Rust） | 体积小（.app 只有 3.9 MiB）、能直接用系统的窗口材质和事件监听 |
 | 前端 | React 19 + TypeScript 5.9 + Vite 8 | — |
 | 编辑器 | TipTap 3.32 + `@tiptap/markdown` | 所见即所得，且能原样吐 Markdown |
 | 状态 | zustand | 够用，体积小 |
-| 动效 | 纯 CSS | 弹簧用 `cubic-bezier` 近似，省一个依赖、启动更快 |
 | 文件监听 | notify 8 | — |
 
 ### 目录结构
@@ -156,26 +145,23 @@ mininote/
 │   ├── App.tsx                外壳：模式切换、事件监听
 │   ├── components/EditorPane.tsx  所见即所得编辑器、标题、自动保存
 │   ├── store/appStore.ts      zustand
-│   ├── lib/{api,time}.ts      IPC 封装、时间与到期计算
+│   ├── lib/{api,time}.ts      IPC 封装、时间工具
 │   └── styles/{tokens,global}.css  设计令牌与玻璃样式
 ├── src-tauri/src/
 │   ├── notes.rs               存储层：frontmatter 解析、原子写、CRUD（9 个单测）
 │   ├── window.rs              显隐、定位、形变动画
-│   ├── overlay.rs             全屏 Space 浮窗：windowLevel 与 collectionBehavior
-│   ├── double_cmd.rs          双击 ⌘ 的事件监视与防误触状态机
-│   ├── lib.rs                 生命周期、命令、快捷键、托盘接线
+│   ├── lib.rs                 生命周期、命令、托盘接线
 │   ├── tray.rs                菜单栏图标与菜单
 │   └── watcher.rs             外部文件变更监听
-├── src-tauri/icons/
-│   ├── app-icon-source.png    应用图标源图（换图标改这里）
-│   └── tray.png               菜单栏模板图标
+├── docs/
+│   ├── VERSIONS.md            版本计划与实现记录
+│   └── *.png                  README 用的截图
 ├── scripts/
-│   ├── install-local.sh       从源码构建并替换本机安装，只留一份
-│   ├── gen-icons.mjs          生成菜单栏模板图标（纯 Node，无依赖）
+│   ├── gen-icons.mjs          图标生成（纯 Node，无依赖）
 │   ├── roundtrip-test.mjs     Markdown 往返幂等测试（14 个用例）
 │   ├── escape-accumulation-test.mjs  转义累积测试（8 个用例）
 │   └── shot-window.py         只截本应用窗口的截图脚本
-└── docs/                      README 用的截图
+└── ...
 ```
 
 ### 几个关键实现
@@ -196,7 +182,7 @@ mininote/
 
 **浮进全屏 Space。** 原生全屏会把 App 挪进独立 Space，默认 `collectionBehavior` 的窗口**根本不会被合成到那个 Space 上** —— 不是被压在下面。所以唤起时给 `NSWindow` 同时挂上 `windowLevel = NSStatusWindowLevel` 和 `CanJoinAllSpaces | FullScreenAuxiliary | Stationary | IgnoresCycle`，收起时摘掉；只调 `set_always_on_top(true)` 不管用，它只改 level。层级在某些全屏 App 上若还不够，可用环境变量 `MININOTE_FLOAT_LEVEL`（如 `101`）覆盖实测，不必重新编译。切换显隐也改成判断「是否处于主动唤起」而不是「窗口是否可见」：启动时窗口本就可见，若按可见来切，进全屏 Space 后第一次按键会走 hide 分支，得按两次才浮出来。聚焦则等窗口真正成为 key 之后才发出，避免「光标画出来了、按键却打进全屏页面」。
 
-**双击 ⌘ 不是快捷键。** 全局快捷键插件只认「修饰键 + 主键」，双击修饰键没法表达，所以用 AppKit 的 `NSEvent` 事件监视器自己判定：global monitor 收别的 App 的事件，local monitor 收本应用的 —— 窗口唤起后本应用会成为前台，缺了 local 就再也收不回来。状态机要求两次完整的按下—抬起、间隔 300ms 内、中间不夹任何普通按键或额外修饰键，因此连续的 `⌘C`、`⌘V` 和三键的 `⌘⇧Space` 都不会误触发。两套监视器同样需要辅助功能权限。
+**双击 ⌘ 用事件监视器判定。** 修饰键的双击没法表达成「修饰键 + 主键」的组合，所以用 AppKit 的 `NSEvent` 事件监视器自己判定：global monitor 收别的 App 的事件，local monitor 收本应用的 —— 窗口唤起后本应用会成为前台，缺了 local 就再也收不回来。状态机要求两次完整的按下—抬起、间隔 300ms 内、中间不夹任何普通按键或额外修饰键，因此连续的 `⌘C`、`⌘V` 都不会误触发。两套监视器同样需要辅助功能权限。项目没有注册任何其他快捷键。
 
 ### 开发与测试
 
@@ -204,24 +190,15 @@ mininote/
 npm run build              # 类型检查 + 打包
 npm run app                # 开发模式
 npm run app:build          # 打包 .app
-npm run install:local      # 构建最新版并替换本机安装，只留一份
-npm run icons              # 只重新生成菜单栏模板图标 tray.png
-npx tauri icon src-tauri/icons/app-icon-source.png  # 换应用图标后重生成全套尺寸
 
 cd src-tauri && cargo test # Rust 单元测试（9 个）
 npm run test:roundtrip     # Markdown 往返幂等
 npm run test:escape        # 转义不累积
 ```
 
-### 路线图
+### 版本记录
 
-- [x] **P0** 窗口外壳、菜单栏托盘、形变动画
-- [x] **P1** 存储层：frontmatter 解析、原子写、外部改动监听、冲突检测
-- [x] **P2** 所见即所得编辑器（TipTap 3）、自动保存
-- [ ] **P3** 大窗列表：置顶 + 时间分组、玻璃卡片、待办进度与到期提醒、永久删除
-- [ ] **P4** 设置项、命令面板、主题手选、字号调节、记住窗口位置
-
-第一版刻意不做：全文搜索、标签、云同步、移动端、系统通知。
+版本计划、每次改动对应的版本与功能，统一记在 [docs/VERSIONS.md](docs/VERSIONS.md)。README 只描述当前已经实现的功能。
 
 ## 许可证
 
