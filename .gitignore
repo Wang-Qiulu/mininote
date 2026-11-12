@@ -3,6 +3,7 @@ dist/
 dist-ssr/
 *.local
 .DS_Store
+.workbuddy/
 .vscode/*
 !.vscode/extensions.json
 .idea/

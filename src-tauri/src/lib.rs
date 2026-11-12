@@ -5,7 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::{Emitter, Manager, State};
 
+mod double_cmd;
 mod notes;
+mod overlay;
 mod tray;
 mod watcher;
 mod window;
@@ -155,7 +157,7 @@ fn open_notes_dir(state: State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn show_window(app: tauri::AppHandle) {
-    window::show(&app);
+    window::show(&app, true);
 }
 
 /// 前端保存完成后调用，随后进程退出
@@ -224,10 +226,11 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, _shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        // 同一个快捷键：开 / 关
-                        if window::toggle(app) {
-                            let _ = app.emit("focus-editor", ());
-                        }
+                        // 同一个快捷键：开 / 关。
+                        // 不再在这里直接 emit focus-editor：此刻窗口还没成为 key，
+                        // 前端只会得到一个「假光标」，按键会打进全屏 App 里。
+                        // 聚焦统一由窗口真正拿到焦点之后驱动。
+                        window::toggle(app);
                     }
                 })
                 .build(),
@@ -249,15 +252,33 @@ pub fn run() {
             // 默认停在屏幕右上角，贴着菜单栏
             window::move_to_top_right(app.handle());
 
-            // 注册全局快捷键：Cmd + Shift + Space
+            // 窗口真正成为 key 之后再通知前端落光标。WANT_FOCUS 是闸门：
+            // 启动时显示窗口不抢焦点，只有主动唤起才请求聚焦。
+            if let Some(w) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
+                w.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Focused(true) = event {
+                        if window::consume_focus_request() {
+                            let _ = handle.emit("focus-editor", ());
+                        }
+                    }
+                });
+            }
+
+            // 主快捷键：双击 ⌘。它走 AppKit 的事件监视器，不走快捷键插件 ——
+            // 「双击修饰键」没法用插件支持的「修饰键 + 主键」表达。
+            double_cmd::setup(app.handle());
+
+            // 备用快捷键：Cmd + Shift + Space。双击 ⌘ 若因权限或第三方占用失效，
+            // 这个键仍然能把窗口叫出来。
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
             let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::Space);
             match app.handle().global_shortcut().register(shortcut) {
                 Ok(()) => {
                     let trusted = has_accessibility_permission();
-                    eprintln!("[快捷键] ⌘⇧Space 注册成功；辅助功能权限：{}", if trusted { "已授予" } else { "未授予（系统会静默丢弃快捷键）" });
+                    eprintln!("[快捷键] 备用键 ⌘⇧Space 注册成功；辅助功能权限：{}", if trusted { "已授予" } else { "未授予（系统会静默丢弃按键事件）" });
                 }
-                Err(e) => eprintln!("[快捷键] ⌘⇧Space 注册失败: {e}"),
+                Err(e) => eprintln!("[快捷键] 备用键 ⌘⇧Space 注册失败: {e}"),
             }
 
             // 启动就把小窗显示出来。
@@ -265,7 +286,7 @@ pub fn run() {
             // 这是菜单栏应用最容易被误解的地方：没有 Dock 图标，如果启动后
             // 什么都不发生，用户会以为没装上、也不知道该去哪里找。
             // 「双击 → 右上角立刻出现小窗」是最不容易误解的反馈。
-            window::show(app.handle());
+            window::show(app.handle(), false);
 
             // 自测钩子：MININOTE_MORPH_TEST=1 启动后自动展开再收回。
             // 刻意走和用户点按钮完全一样的路径（同一个命令函数），
@@ -316,7 +337,7 @@ pub fn run() {
             // 应用已经在跑，用户又双击了一次 .app：macOS 不会启动新进程，
             // 只会发一个 Reopen。把它变成「把小窗叫出来」，免得用户以为没反应。
             tauri::RunEvent::Reopen { .. } => {
-                window::show(app);
+                window::show(app, true);
             }
             _ => {}
         });

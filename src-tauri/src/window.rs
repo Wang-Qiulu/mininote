@@ -8,11 +8,23 @@
 //! 2. **右边缘锚定**：宽度向左生长，笔记本身的位置纹丝不动。
 //! 3. **收回时精确还原**到展开前的位置，不做任何居中或钳制。
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager};
+
+/// 是否处于「主动唤起」状态（层级已提升、可跨 Space）。
+///
+/// 它**不等于**「窗口可见」：启动时窗口就是可见的，但那是被动摆出来，
+/// 没有提升层级，也不该算作一次唤起。若拿「是否可见」来切换显隐，
+/// 用户切进全屏 Space 后第一次按快捷键会走 hide 分支 —— 窗口明明没显示
+/// 在全屏 Space 上，按了却像没反应，得按第二次才浮出来。
+static ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// 本次主动唤起是否要把光标落到编辑器。
+/// 启动时的被动显示不该抢焦点，只有主动唤起才要。
+static WANT_FOCUS: AtomicBool = AtomicBool::new(false);
 
 pub const MINI_W: f64 = 360.0;
 pub const MINI_H: f64 = 300.0;
@@ -50,11 +62,26 @@ fn webview(app: &AppHandle) -> Option<tauri::WebviewWindow> {
     app.get_webview_window("main")
 }
 
-pub fn show(app: &AppHandle) {
+/// 取走一次「落光标」请求。全局只会有一个消费者拿到 true。
+///
+/// 主线程闭包和 `WindowEvent::Focused` 都会尝试取：谁先到谁发事件，
+/// 既保证窗口已经拿到 key，也不会因为「窗口本来就是 key、不触发 Focused」
+/// 而漏掉聚焦。
+pub fn consume_focus_request() -> bool {
+    WANT_FOCUS.swap(false, Ordering::SeqCst)
+}
+
+/// 显示窗口。`active` 表示这是一次**主动唤起**（快捷键 / 托盘 / Reopen）：
+/// 只有主动唤起才提升层级、跨 Space、并把光标落到编辑器。
+/// 启动时传 false，只是把窗口摆出来，保持普通窗口层级。
+pub fn show(app: &AppHandle, active: bool) {
     let Some(w) = webview(app) else {
         eprintln!("[窗口] 找不到 main 窗口");
         return;
     };
+    ACTIVE.store(active, Ordering::SeqCst);
+    WANT_FOCUS.store(active, Ordering::SeqCst);
+
     let _ = w.show();
     let _ = w.unminimize();
 
@@ -63,11 +90,23 @@ pub fn show(app: &AppHandle) {
     // set_focus 会被直接跳过，其中的 activateIgnoringOtherApps:YES 永不执行，
     // 结果就是 Accessory 应用的窗口永远压在别的应用下面。
     // 把聚焦排到主线程队列的 show 之后，FIFO 保证顺序。
+    //
+    // 主动唤起时顺序更关键：先挂上跨 Space / 高层级能力，再 makeKeyAndOrderFront。
+    // 反过来的话，窗口会在「还没被允许进入全屏 Space」时被 order 到前面，白做一次。
     let w2 = w.clone();
+    let app2 = app.clone();
     let _ = app.run_on_main_thread(move || {
+        if active {
+            crate::overlay::elevate(&w2);
+        }
         let _ = w2.set_focus();
+        // set_focus 内部是同步的 makeKeyAndOrderFront，此刻窗口已经是 key，
+        // 再发聚焦请求就不再是「抢跑」了。
+        if consume_focus_request() {
+            let _ = app2.emit("focus-editor", ());
+        }
         eprintln!(
-            "[窗口] 已请求显示：visible={:?} focused={:?}",
+            "[窗口] 已显示：active={active} visible={:?} focused={:?}",
             w2.is_visible(),
             w2.is_focused()
         );
@@ -75,20 +114,25 @@ pub fn show(app: &AppHandle) {
 }
 
 pub fn hide(app: &AppHandle) {
+    ACTIVE.store(false, Ordering::SeqCst);
+    WANT_FOCUS.store(false, Ordering::SeqCst);
     if let Some(w) = webview(app) {
         let _ = w.hide();
+        // 摘掉跨 Space 能力，别让便签常驻在每个桌面上。
+        // AppKit 的窗口属性必须在主线程上改。
+        let w2 = w.clone();
+        let _ = app.run_on_main_thread(move || {
+            crate::overlay::restore(&w2);
+        });
     }
 }
 
-/// 显示/隐藏切换。返回 true 表示这次是「显示」。
-pub fn toggle(app: &AppHandle) -> bool {
-    let Some(w) = webview(app) else { return false };
-    if w.is_visible().unwrap_or(false) {
+/// 显示/隐藏切换：没唤起就主动唤起，已唤起就收起还原。
+pub fn toggle(app: &AppHandle) {
+    if ACTIVE.load(Ordering::SeqCst) {
         hide(app);
-        false
     } else {
-        show(app);
-        true
+        show(app, true);
     }
 }
 

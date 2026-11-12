@@ -87,7 +87,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 ..
             } = event
             {
-                crate::window::show(tray.app_handle());
+                crate::window::show(tray.app_handle(), true);
             }
         })
         .build(app)?;

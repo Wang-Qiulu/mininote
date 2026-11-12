@@ -215,12 +215,25 @@ export function EditorPane({ noteId }: Props) {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // 全局快捷键唤起后，把光标放到正文末尾，直接就能打字
+  // 主动唤起后，把光标放到正文末尾，直接就能打字。
+  //
+  // Rust 侧现在只在窗口真正拿到 key 之后才发这个事件。但 webview 的
+  // document.hasFocus() 可能比窗口的 Focused 事件晚一帧就绪，所以这里
+  // 最多等几帧再落光标 —— 没有 document 焦点时的 focus() 只是画了个假光标，
+  // 按键会全部打进原来那个全屏 App 里，比没有光标更糟。
   useEffect(() => {
     if (!editor) return;
     let un: (() => void) | undefined;
     void listen("focus-editor", () => {
-      editor.commands.focus("end");
+      let tries = 0;
+      const tryFocus = () => {
+        if (document.hasFocus()) {
+          editor.commands.focus("end");
+        } else if (tries++ < 5) {
+          requestAnimationFrame(tryFocus);
+        }
+      };
+      requestAnimationFrame(tryFocus);
     }).then((fn) => {
       un = fn;
     });
