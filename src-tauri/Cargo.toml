@@ -1,6 +1,6 @@
 [package]
 name = "mininote"
-version = "0.3.0"
+version = "0.4.0"
 description = "本地运行的 macOS 浮窗速记应用"
 edition = "2021"
 rust-version = "1.82"

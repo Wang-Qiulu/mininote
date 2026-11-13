@@ -1,10 +1,42 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Maximize2, Minimize2, FolderOpen, SquarePen } from "lucide-react";
+import { Check, Copy, Maximize2, Minimize2, SquarePen } from "lucide-react";
 import { api } from "./lib/api";
 import { pendingTodoCount } from "./lib/time";
 import { useAppStore } from "./store/appStore";
 import { EditorPane } from "./components/EditorPane";
+
+type CopyState = "idle" | "ok" | "fail";
+
+/**
+ * 把文本写进系统剪贴板。
+ * webview 的标准接口需要用户手势；万一被拒，退回临时文本框 + execCommand，
+ * 这是 WKWebView 上仍然可用的老办法。两条路都不需要新增插件或系统权限。
+ */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 落到下面的兜底
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:-9999px;opacity:0;";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
 
 export default function App() {
   const mode = useAppStore((s) => s.mode);
@@ -16,6 +48,26 @@ export default function App() {
   const setMorphing = useAppStore((s) => s.setMorphing);
   const setLoaded = useAppStore((s) => s.setLoaded);
   const setCurrentId = useAppStore((s) => s.setCurrentId);
+
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  /** 一键复制当前笔记正文的 Markdown 原文（带符号，不含 frontmatter 与笔记标题） */
+  const onCopy = useCallback(async () => {
+    // 取编辑器此刻的状态，而不是磁盘上的文件：刚打完字、以及还没落盘
+    // 的新笔记，复制到的都是屏幕上看到的内容。
+    const getter = useAppStore.getState().markdownGetter;
+    const ok = getter ? await copyText(getter()) : false;
+    setCopyState(ok ? "ok" : "fail");
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopyState("idle"), 1600);
+  }, []);
 
   // Rust 侧驱动形变动画，前端只做内容层淡化
   useEffect(() => {
@@ -98,8 +150,24 @@ export default function App() {
               <Maximize2 size={14} strokeWidth={2} />
             )}
           </button>
-          <button className="iconbtn" title="打开笔记目录" onClick={() => void api.openNotesDir()}>
-            <FolderOpen size={14} strokeWidth={2} />
+          <button
+            className="iconbtn"
+            data-active={copyState === "ok"}
+            data-error={copyState === "fail"}
+            title={
+              copyState === "ok"
+                ? "已复制"
+                : copyState === "fail"
+                  ? "复制失败"
+                  : "复制 Markdown 原文"
+            }
+            onClick={() => void onCopy()}
+          >
+            {copyState === "ok" ? (
+              <Check size={14} strokeWidth={2} />
+            ) : (
+              <Copy size={14} strokeWidth={2} />
+            )}
           </button>
         </div>
       </header>

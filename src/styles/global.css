@@ -185,6 +185,10 @@ textarea {
   color: var(--accent-text);
 }
 
+.iconbtn[data-error="true"] {
+  color: var(--danger);
+}
+
 .iconbtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;

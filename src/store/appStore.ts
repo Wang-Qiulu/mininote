@@ -10,6 +10,10 @@ interface AppState {
   /** 形变过程中为 true：内容淡出，避免尺寸变化时的重排跳变 */
   morphing: boolean;
   loaded: boolean;
+  /** 读取编辑器此刻的 Markdown 原文。顶栏的复制按钮不在编辑器组件树里，
+   *  由 EditorPane 把「取原文」注册进来。用 getState() 读、不订阅，
+   *  就不会因为每敲一个字而重渲染顶栏。 */
+  markdownGetter: (() => string) | null;
 
   setNotes: (notes: NoteMeta[]) => void;
   upsertNote: (note: NoteMeta) => void;
@@ -18,6 +22,7 @@ interface AppState {
   setMode: (mode: WindowMode) => void;
   setMorphing: (morphing: boolean) => void;
   setLoaded: (loaded: boolean) => void;
+  setMarkdownGetter: (getter: (() => string) | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -26,6 +31,7 @@ export const useAppStore = create<AppState>((set) => ({
   mode: "mini",
   morphing: false,
   loaded: false,
+  markdownGetter: null,
 
   setNotes: (notes) => set({ notes }),
   upsertNote: (note) =>
@@ -40,4 +46,5 @@ export const useAppStore = create<AppState>((set) => ({
   setMode: (mode) => set({ mode }),
   setMorphing: (morphing) => set({ morphing }),
   setLoaded: (loaded) => set({ loaded }),
+  setMarkdownGetter: (markdownGetter) => set({ markdownGetter }),
 }));

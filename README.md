@@ -2,7 +2,7 @@
 
 > 一块贴在桌面右上角的玻璃便签。双击 ⌘ 一按即现即写，写完就走。
 
-![平台](https://img.shields.io/badge/平台-macOS%2013%2B-1b1a19) ![版本](https://img.shields.io/badge/版本-v0.3.0-d9662b) ![许可证](https://img.shields.io/badge/许可证-MIT-d9662b) ![状态](https://img.shields.io/badge/状态-早期%20版本-8a8a8a)
+![平台](https://img.shields.io/badge/平台-macOS%2013%2B-1b1a19) ![版本](https://img.shields.io/badge/版本-v0.4.0-d9662b) ![许可证](https://img.shields.io/badge/许可证-MIT-d9662b) ![状态](https://img.shields.io/badge/状态-早期%20版本-8a8a8a)
 
 ![小窗：360×300](docs/screenshot-mini.png)
 
@@ -44,6 +44,7 @@
 
 - 所见即所得编辑器：粗体 / 斜体 / 删除线 / 行内代码 / 代码块 / 标题 1–3 / 有序无序列表 / 任务清单 / 引用 / 分隔线 / 链接
 - 选中文字时浮出格式工具条
+- 顶栏一键复制当前笔记的 Markdown 原文：`#` `**` `- [ ]` 等符号原样保留，不用选中文字，也不会带出排版产生的多余空格；不含 frontmatter 和笔记标题
 - 标题独立于正文（存在 frontmatter 里）；新建笔记后光标落在标题，回车进正文
 - 任务清单的 `- [ ]` / `- [x]` 存成 Markdown 再读回来，一字不差
 

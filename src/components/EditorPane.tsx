@@ -47,6 +47,7 @@ export function EditorPane({ noteId }: Props) {
   const loaded = useAppStore((s) => s.loaded);
   const upsertNote = useAppStore((s) => s.upsertNote);
   const setCurrentId = useAppStore((s) => s.setCurrentId);
+  const setMarkdownGetter = useAppStore((s) => s.setMarkdownGetter);
 
   const idRef = useRef<string | null>(null);
   const bodyRef = useRef("");
@@ -150,6 +151,15 @@ export function EditorPane({ noteId }: Props) {
       scheduleSave();
     },
   });
+
+  // 把「取当前 Markdown 原文」注册给顶栏的复制按钮。
+  // 读的是编辑器此刻的状态而不是磁盘文件，所以刚打完字、以及还没落盘
+  // 的新笔记，复制到的都是屏幕上看到的内容。
+  useEffect(() => {
+    if (!editor) return;
+    setMarkdownGetter(() => editor.getMarkdown());
+    return () => setMarkdownGetter(null);
+  }, [editor, setMarkdownGetter]);
 
   // 切换笔记时把内容装载进编辑器。
   //
